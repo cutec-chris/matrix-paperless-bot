@@ -1,0 +1,5 @@
+server:
+  url: "https://matrix.org"
+  user: paperless
+  password: botpassword
+  prefix: docs
