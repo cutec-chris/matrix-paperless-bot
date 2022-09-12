@@ -20,6 +20,15 @@ async def showpage(page,server,preview=False,update_lastid=False):
     if update_lastid:
         server.lastid = page['id']
         await save_servers()
+@bot.listener.on_custom_event
+async def upload(room, event):
+    global servers,lastsend
+    server = None
+    for server in servers:
+        if server.room == room.room_id:
+            break
+    if server and server.room != room.room_id: return
+    pass
 @bot.listener.on_message_event
 async def tell(room, message):
     global servers,lastsend
