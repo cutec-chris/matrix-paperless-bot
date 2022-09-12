@@ -1,5 +1,6 @@
 from init import *
-import requests,requests.auth,mimetypes,urllib.parse,aiofiles,os
+import requests,requests.auth,mimetypes,urllib.parse,aiofiles,os,mimetypes
+from nio import RoomMessageFile,RoomMessageImage
 loop = None
 lastsend = None
 class Server(Config):
@@ -20,15 +21,6 @@ async def showpage(page,server,preview=False,update_lastid=False):
     if update_lastid:
         server.lastid = page['id']
         await save_servers()
-@bot.listener.on_custom_event
-async def upload(room, event):
-    global servers,lastsend
-    server = None
-    for server in servers:
-        if server.room == room.room_id:
-            break
-    if server and server.room != room.room_id: return
-    pass
 @bot.listener.on_message_event
 async def tell(room, message):
     global servers,lastsend
@@ -126,6 +118,22 @@ async def tell(room, message):
             lastsend = user+':'+message.body
         except:
             pass
+async def file_received(room, event):
+    global servers,lastsend
+    server = None
+    for server in servers:
+        if server.room == room.room_id:
+            break
+    if server and server.room != room.room_id: return
+    file = requests.get(url=await bot.async_client.mxc_to_http(event.url))
+    url = server.server+'/api/documents/post_document/'
+    response = requests.post(
+        url=url,
+        data={"title": event.body},
+        files={"document": ('%s.%s' % (os.path.basename(event.body),os.path.splitext(event.body)[1]), file.content, file.headers['Content-Type'])},
+        auth=requests.auth.HTTPBasicAuth(server.user, server.password),
+        allow_redirects=False
+    )
 async def check_server(server):
     global lastsend,servers
     response = requests.get(
@@ -170,6 +178,8 @@ async def startup(room):
     for server in servers:
         if server.room == room:
             loop.create_task(check_server(server))
+    bot.async_client.add_event_callback(file_received, RoomMessageFile)
+    bot.async_client.add_event_callback(file_received, RoomMessageImage)
 @bot.listener.on_message_event
 async def bot_help(room, message):
     bot_help_message = f"""
